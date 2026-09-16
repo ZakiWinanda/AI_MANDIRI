@@ -9,9 +9,11 @@ from dotenv import load_dotenv
 # Load file .env jika ada
 load_dotenv(override=True)
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-TEMPLATE_DIR = os.path.join(BASE_DIR, 'templates')
-STATIC_DIR = os.path.join(BASE_DIR, 'static')
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+PARENT_DIR = os.path.dirname(CURRENT_DIR)
+
+TEMPLATE_DIR = os.path.join(CURRENT_DIR, 'templates') if os.path.exists(os.path.join(CURRENT_DIR, 'templates')) else os.path.join(PARENT_DIR, 'templates')
+STATIC_DIR = os.path.join(CURRENT_DIR, 'static') if os.path.exists(os.path.join(CURRENT_DIR, 'static')) else os.path.join(PARENT_DIR, 'static')
 
 app = Flask(
     __name__,
@@ -20,6 +22,25 @@ app = Flask(
     static_url_path='/static'
 )
 app.secret_key = os.getenv('SECRET_KEY', 'default-ai-assistant-secret-key-2026')
+
+
+class PrefixMiddleware:
+    """Memperbaiki penanganan path URL pada runtime serverless Vercel."""
+    def __init__(self, wsgi_app):
+        self.wsgi_app = wsgi_app
+
+    def __call__(self, environ, start_response):
+        path = environ.get('PATH_INFO', '')
+        for prefix in ('/api/index.py', '/api/index', '/index.py'):
+            if path == prefix:
+                environ['PATH_INFO'] = '/'
+                break
+            elif path.startswith(prefix + '/'):
+                environ['PATH_INFO'] = path[len(prefix):]
+                break
+        return self.wsgi_app(environ, start_response)
+
+app.wsgi_app = PrefixMiddleware(app.wsgi_app)
 
 # Konfigurasi AI Provider (9Router / OpenRouter)
 AI_API_KEY = os.getenv('AI_API_KEY') or os.getenv('OPENROUTER_API_KEY', '')
@@ -123,6 +144,9 @@ def get_conversation_history(conv_id, limit=12):
 
 
 @app.route('/')
+@app.route('/api')
+@app.route('/api/index')
+@app.route('/api/index.py')
 def home():
     """Halaman utama aplikasi web."""
     return render_template('index.html', 
@@ -131,6 +155,14 @@ def home():
         default_model=AI_MODEL,
         base_url=AI_BASE_URL
     )
+
+
+@app.errorhandler(404)
+def handle_404(e):
+    """Fallback handler jika Vercel rewrite mengarahkan ke path yang tidak terdaftar."""
+    if request.method == 'GET' and not request.path.startswith('/api/'):
+        return home()
+    return jsonify({'error': 'Endpoint tidak ditemukan', 'path': request.path}), 404
 
 
 @app.route('/api/status', methods=['GET'])
