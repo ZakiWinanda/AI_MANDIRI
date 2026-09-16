@@ -30,12 +30,28 @@ class PrefixMiddleware:
         self.wsgi_app = wsgi_app
 
     def __call__(self, environ, start_response):
-        # 1. Jika Vercel meneruskan original URI via HTTP_X_FORWARDED_URI atau HTTP_X_MATCHED_PATH
-        original_uri = environ.get('HTTP_X_FORWARDED_URI') or environ.get('HTTP_X_MATCHED_PATH')
-        if original_uri:
-            clean_path = original_uri.split('?')[0]
-            environ['PATH_INFO'] = clean_path
+        # 1. Baca __vpath dari query string yang diteruskan oleh vercel.json rewrite rule
+        query_string = environ.get('QUERY_STRING', '')
+        vpath = None
+        new_qs_parts = []
+        for part in query_string.split('&'):
+            if part.startswith('__vpath='):
+                vpath = part[len('__vpath='):]
+            else:
+                if part:
+                    new_qs_parts.append(part)
 
+        if vpath:
+            # URL-decode path dan set ke PATH_INFO
+            try:
+                from urllib.parse import unquote
+                vpath = unquote(vpath)
+            except Exception:
+                pass
+            environ['PATH_INFO'] = vpath if vpath else '/'
+            environ['QUERY_STRING'] = '&'.join(new_qs_parts)
+
+        # 2. Fallback: strip prefix /api/index.py jika belum diproses
         path = environ.get('PATH_INFO', '')
         for prefix in ('/api/index.py', '/api/index', '/index.py'):
             if path == prefix:
