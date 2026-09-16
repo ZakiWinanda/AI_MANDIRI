@@ -30,6 +30,12 @@ class PrefixMiddleware:
         self.wsgi_app = wsgi_app
 
     def __call__(self, environ, start_response):
+        # 1. Jika Vercel meneruskan original URI via HTTP_X_FORWARDED_URI atau HTTP_X_MATCHED_PATH
+        original_uri = environ.get('HTTP_X_FORWARDED_URI') or environ.get('HTTP_X_MATCHED_PATH')
+        if original_uri:
+            clean_path = original_uri.split('?')[0]
+            environ['PATH_INFO'] = clean_path
+
         path = environ.get('PATH_INFO', '')
         for prefix in ('/api/index.py', '/api/index', '/index.py'):
             if path == prefix:
@@ -160,7 +166,7 @@ def home():
 @app.errorhandler(404)
 def handle_404(e):
     """Fallback handler jika Vercel rewrite mengarahkan ke path yang tidak terdaftar."""
-    if request.method == 'GET' and not request.path.startswith('/api/'):
+    if request.method == 'GET' and not request.path.startswith('/api/') and not request.path.startswith('/static/'):
         return home()
     return jsonify({'error': 'Endpoint tidak ditemukan', 'path': request.path}), 404
 
