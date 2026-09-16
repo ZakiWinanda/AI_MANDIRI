@@ -190,8 +190,8 @@ def handle_404(e):
 @app.route('/api/status', methods=['GET'])
 def check_status():
     """Cek status konfigurasi API dan Database."""
-    is_9router = "20128" in AI_BASE_URL or "localhost" in AI_BASE_URL or "tunnel" in AI_BASE_URL or "ANTIGRAVITY" in AI_MODEL
-    provider_name = '9Router (Tunnel)' if 'tunnel' in AI_BASE_URL else ('9Router (Lokal)' if is_9router else 'OpenRouter (Cloud)')
+    is_9router = "20128" in AI_BASE_URL or "localhost" in AI_BASE_URL or "tunnel" in AI_BASE_URL or "ANTIGRAVITY" in AI_MODEL or "ngrok" in AI_BASE_URL
+    provider_name = 'ngrok → 9Router (Lokal)' if 'ngrok' in AI_BASE_URL else ('9Router (Tunnel)' if 'tunnel' in AI_BASE_URL else ('9Router (Lokal)' if is_9router else 'OpenRouter (Cloud)'))
     return jsonify({
         'ai_configured': bool(AI_API_KEY and not AI_API_KEY.startswith('sk-or-v1-xxxx')),
         'provider': provider_name,
@@ -321,6 +321,7 @@ def chat():
             headers = {
                 'Authorization': f'Bearer {api_key}',
                 'Content-Type': 'application/json',
+                'ngrok-skip-browser-warning': '1',  # Bypass ngrok browser warning page
             }
             payload = {
                 'model': custom_model,
