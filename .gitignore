@@ -1,0 +1,19 @@
+# Keamanan: Jangan pernah upload file rahasia .env ke GitHub
+.env
+
+# Python Cache & Virtualenv
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# Vercel Cache
+.vercel/
+
+# Sistem Operasi
+.DS_Store
+Thumbs.db
