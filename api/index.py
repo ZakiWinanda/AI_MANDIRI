@@ -329,7 +329,7 @@ def chat():
                 'model': custom_model,
                 'messages': messages_payload,
                 'temperature': 0.7,
-                'max_tokens': 2048,
+                'max_tokens': int(os.getenv('MAX_TOKENS', '8192')),
                 'stream': False
             }
             endpoint_url = f"{AI_BASE_URL.rstrip('/')}/chat/completions"
