@@ -39,6 +39,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeInfoModalBtn = document.getElementById('closeInfoModalBtn');
     const modalUnderstandBtn = document.getElementById('modalUnderstandBtn');
 
+    // Theme Switcher
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+
     // 1. Konfigurasi Markdown (marked) & Syntax Highlighting
     marked.setOptions({
         highlight: function(code, lang) {
@@ -53,10 +56,23 @@ document.addEventListener('DOMContentLoaded', () => {
     initApp();
 
     function initApp() {
+        initTheme();
         checkSystemStatus();
         loadConversations();
         setupEventListeners();
         setupTextareaAutoResize();
+    }
+
+    function initTheme() {
+        const savedTheme = localStorage.getItem('nova_theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    }
+
+    function toggleTheme() {
+        const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', newTheme);
+        localStorage.setItem('nova_theme', newTheme);
     }
 
     // 3. Status Backend (OpenRouter & Supabase)
@@ -399,6 +415,11 @@ document.addEventListener('DOMContentLoaded', () => {
             infoModal.addEventListener('click', (e) => {
                 if (e.target === infoModal) infoModal.classList.remove('open');
             });
+        }
+
+        // Theme Switcher Toggle
+        if (themeToggleBtn) {
+            themeToggleBtn.addEventListener('click', toggleTheme);
         }
     }
 
