@@ -674,12 +674,14 @@ html[data-theme="light"] .icon-moon { opacity: 0; transform: scale(0.5); }
     flex: 1;
     min-width: 0;
     max-width: calc(100% - 44px);
+    overflow-x: auto;
 }
 
 .message-row.user .message-body {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
+    overflow-x: visible;
 }
 
 .message-bubble {
@@ -687,6 +689,8 @@ html[data-theme="light"] .icon-moon { opacity: 0; transform: scale(0.5); }
     line-height: 1.65;
     color: var(--message-text);
     word-wrap: break-word;
+    overflow-x: auto;
+    max-width: 100%;
 }
 
 .message-row.user .message-bubble {
@@ -766,20 +770,81 @@ html[data-theme="light"] .icon-moon { opacity: 0; transform: scale(0.5); }
     line-height: 1.6;
 }
 
-.message-bubble table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 0.75rem 0;
-    font-size: 0.88em;
+/* Tabel: wrapper scrollable agar bisa digeser kiri-kanan */
+.message-bubble {
+    font-size: 0.93rem;
+    line-height: 1.65;
+    color: var(--message-text);
+    word-wrap: break-word;
+    overflow-x: auto;
+    max-width: 100%;
 }
+
+.table-wrap,
+.message-bubble div.table-wrap {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto !important;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    margin: 1rem 0;
+    background: var(--input-bg);
+}
+
+.message-bubble table {
+    border-collapse: collapse;
+    margin: 0;
+    font-size: 0.85em;
+    min-width: 100%;
+    width: max-content;
+    white-space: nowrap;
+}
+
+/* Fallback langsung jika belum terbungkus div.table-wrap */
+.message-bubble > table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    margin: 1rem 0;
+    background: var(--input-bg);
+}
+
 .message-bubble th, .message-bubble td {
     border: 1px solid var(--border);
-    padding: 0.5rem 0.75rem;
+    padding: 0.6rem 0.9rem;
     text-align: left;
+    white-space: nowrap;
 }
+
 .message-bubble th {
-    background: var(--input-bg);
+    background: var(--sidebar-hover);
     font-weight: 600;
+    color: var(--text-primary);
+    position: sticky;
+    top: 0;
+}
+
+.message-bubble tr:nth-child(even) td {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+/* Custom scrollbar untuk tabel agar terlihat jelas */
+.table-wrap::-webkit-scrollbar,
+.message-bubble table::-webkit-scrollbar,
+.message-body::-webkit-scrollbar {
+    height: 8px;
+}
+.table-wrap::-webkit-scrollbar-thumb,
+.message-bubble table::-webkit-scrollbar-thumb,
+.message-body::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 4px;
 }
 
 .message-bubble hr {

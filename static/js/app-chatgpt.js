@@ -294,7 +294,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ${isUser ? avatarHtml : ''}
         `;
 
-        // Copy button for code blocks
+        // Copy button for code blocks & table scroll wrapper
         if (!isUser) {
             row.querySelectorAll('pre').forEach(pre => {
                 const btn = document.createElement('button');
@@ -309,6 +309,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 pre.style.position = 'relative';
                 pre.appendChild(btn);
+            });
+
+            // Bungkus setiap tabel agar bisa digeser ke kanan-kiri (horizontal scroll)
+            row.querySelectorAll('table').forEach(table => {
+                if (!table.parentElement.classList.contains('table-wrap')) {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'table-wrap';
+                    table.parentNode.insertBefore(wrapper, table);
+                    wrapper.appendChild(table);
+                }
             });
         }
 
