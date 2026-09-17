@@ -45,8 +45,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // 1. Konfigurasi Markdown (marked) & Syntax Highlighting
     marked.setOptions({
         highlight: function(code, lang) {
-            const language = highlight.getLanguage(lang) ? lang : 'plaintext';
-            return highlight.highlight(code, { language }).value;
+            if (typeof hljs !== 'undefined') {
+                const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+                return hljs.highlight(code, { language }).value;
+            }
+            return code;
         },
         breaks: true,
         gfm: true
@@ -63,18 +66,32 @@ document.addEventListener('DOMContentLoaded', () => {
         setupTextareaAutoResize();
     }
 
-    function initTheme() {
-        const savedTheme = localStorage.getItem('nova_theme') || 'dark';
-        document.documentElement.setAttribute('data-theme', savedTheme);
-        document.body.setAttribute('data-theme', savedTheme);
+    function applyThemeUI(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        document.body.setAttribute('data-theme', theme);
+        const sunIcon = document.querySelector('.theme-toggle-btn .icon-sun');
+        const moonIcon = document.querySelector('.theme-toggle-btn .icon-moon');
+        if (sunIcon && moonIcon) {
+            if (theme === 'light') {
+                sunIcon.style.setProperty('display', 'block', 'important');
+                moonIcon.style.setProperty('display', 'none', 'important');
+            } else {
+                sunIcon.style.setProperty('display', 'none', 'important');
+                moonIcon.style.setProperty('display', 'block', 'important');
+            }
+        }
     }
 
-    function toggleTheme() {
+    window.toggleTheme = function() {
         const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
         const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', newTheme);
-        document.body.setAttribute('data-theme', newTheme);
+        applyThemeUI(newTheme);
         localStorage.setItem('nova_theme', newTheme);
+    };
+
+    function initTheme() {
+        const savedTheme = localStorage.getItem('nova_theme') || 'dark';
+        applyThemeUI(savedTheme);
     }
 
     // 3. Status Backend (OpenRouter & Supabase)
@@ -421,7 +438,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Theme Switcher Toggle
         if (themeToggleBtn) {
-            themeToggleBtn.addEventListener('click', toggleTheme);
+            themeToggleBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                window.toggleTheme();
+            });
         }
     }
 
