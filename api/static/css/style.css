@@ -847,22 +847,30 @@ html, body {
     border-color: var(--border-highlight) !important;
 }
 
-.theme-toggle-btn svg {
+.theme-toggle-btn .icon-sun,
+.theme-toggle-btn .icon-moon {
     width: 18px;
     height: 18px;
     pointer-events: none;
+    display: none;
     transition: opacity 0.2s ease, transform 0.3s ease;
 }
 
-[data-theme="light"] .theme-toggle-btn .icon-moon,
-html[data-theme="light"] .theme-toggle-btn .icon-moon { display: none !important; }
-[data-theme="light"] .theme-toggle-btn .icon-sun,
-html[data-theme="light"] .theme-toggle-btn .icon-sun { display: block !important; }
+html[data-theme="dark"] .theme-toggle-btn .icon-moon,
+body[data-theme="dark"] .theme-toggle-btn .icon-moon,
+[data-theme="dark"] .theme-toggle-btn .icon-moon { display: block !important; }
 
-[data-theme="dark"] .theme-toggle-btn .icon-sun,
-html[data-theme="dark"] .theme-toggle-btn .icon-sun { display: none !important; }
-[data-theme="dark"] .theme-toggle-btn .icon-moon,
-html[data-theme="dark"] .theme-toggle-btn .icon-moon { display: block !important; }
+html[data-theme="dark"] .theme-toggle-btn .icon-sun,
+body[data-theme="dark"] .theme-toggle-btn .icon-sun,
+[data-theme="dark"] .theme-toggle-btn .icon-sun { display: none !important; }
+
+html[data-theme="light"] .theme-toggle-btn .icon-sun,
+body[data-theme="light"] .theme-toggle-btn .icon-sun,
+[data-theme="light"] .theme-toggle-btn .icon-sun { display: block !important; }
+
+html[data-theme="light"] .theme-toggle-btn .icon-moon,
+body[data-theme="light"] .theme-toggle-btn .icon-moon,
+[data-theme="light"] .theme-toggle-btn .icon-moon { display: none !important; }
 
 /* ==========================================================================
    Modals

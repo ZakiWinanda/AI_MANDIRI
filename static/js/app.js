@@ -1,6 +1,29 @@
-/**
- * Personal AI Assistant - Client Application Logic
- */
+// Global Theme Management
+window.applyThemeUI = function(theme) {
+    theme = theme || localStorage.getItem('nova_theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', theme);
+    if (document.body) document.body.setAttribute('data-theme', theme);
+
+    const sunIcons = document.querySelectorAll('.icon-sun');
+    const moonIcons = document.querySelectorAll('.icon-moon');
+
+    sunIcons.forEach(icon => {
+        icon.style.setProperty('display', theme === 'light' ? 'block' : 'none', 'important');
+    });
+    moonIcons.forEach(icon => {
+        icon.style.setProperty('display', theme === 'dark' ? 'block' : 'none', 'important');
+    });
+};
+
+window.toggleTheme = function() {
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('nova_theme', newTheme);
+    window.applyThemeUI(newTheme);
+};
+
+// Jalankan langsung untuk memastikan tema awal terpasang
+window.applyThemeUI();
 
 document.addEventListener('DOMContentLoaded', () => {
     // State
@@ -59,39 +82,11 @@ document.addEventListener('DOMContentLoaded', () => {
     initApp();
 
     function initApp() {
-        initTheme();
+        window.applyThemeUI();
         checkSystemStatus();
         loadConversations();
         setupEventListeners();
         setupTextareaAutoResize();
-    }
-
-    function applyThemeUI(theme) {
-        document.documentElement.setAttribute('data-theme', theme);
-        document.body.setAttribute('data-theme', theme);
-        const sunIcon = document.querySelector('.theme-toggle-btn .icon-sun');
-        const moonIcon = document.querySelector('.theme-toggle-btn .icon-moon');
-        if (sunIcon && moonIcon) {
-            if (theme === 'light') {
-                sunIcon.style.setProperty('display', 'block', 'important');
-                moonIcon.style.setProperty('display', 'none', 'important');
-            } else {
-                sunIcon.style.setProperty('display', 'none', 'important');
-                moonIcon.style.setProperty('display', 'block', 'important');
-            }
-        }
-    }
-
-    window.toggleTheme = function() {
-        const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
-        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-        applyThemeUI(newTheme);
-        localStorage.setItem('nova_theme', newTheme);
-    };
-
-    function initTheme() {
-        const savedTheme = localStorage.getItem('nova_theme') || 'dark';
-        applyThemeUI(savedTheme);
     }
 
     // 3. Status Backend (OpenRouter & Supabase)
