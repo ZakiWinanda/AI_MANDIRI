@@ -1,6 +1,6 @@
 /**
  * ChatGPT-Style App Logic
- * Clean, No Logo, No Brand, Centered Empty State
+ * Clean UI, Multi-File Attachment (PDF, DOCX, XLSX, Code, Text, Images), Vision & Context
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -9,28 +9,34 @@ document.addEventListener('DOMContentLoaded', () => {
     let activeConversationId = null;
     let conversations = [];
     let isGenerating = false;
+    let attachedFiles = []; // Array of { name, size, type, is_image, data_url, content }
 
     // ── DOM ────────────────────────────────────────────────────────────────
-    const mainContent      = document.getElementById('mainContent');
-    const chatContainer    = document.getElementById('chatContainer');
-    const messagesList     = document.getElementById('messagesList');
-    const welcomeScreen    = document.getElementById('welcomeScreen');
-    const typingIndicator  = document.getElementById('typingIndicator');
-    const chatForm         = document.getElementById('chatForm');
-    const messageInput     = document.getElementById('messageInput');
-    const sendBtn          = document.getElementById('sendBtn');
-    const modelSelect      = document.getElementById('modelSelect');
-    const activeChatTitle  = document.getElementById('activeChatTitle');
-    const conversationsList= document.getElementById('conversationsList');
-    const newChatBtn       = document.getElementById('newChatBtn');
-    const sidebar          = document.getElementById('sidebar');
-    const sidebarOverlay   = document.getElementById('sidebarOverlay');
-    const toggleSidebarBtn = document.getElementById('toggleSidebarBtn');
-    const closeSidebarBtn  = document.getElementById('closeSidebarBtn');
+    const mainContent          = document.getElementById('mainContent');
+    const chatContainer        = document.getElementById('chatContainer');
+    const messagesList         = document.getElementById('messagesList');
+    const welcomeScreen        = document.getElementById('welcomeScreen');
+    const typingIndicator      = document.getElementById('typingIndicator');
+    const chatForm             = document.getElementById('chatForm');
+    const messageInput         = document.getElementById('messageInput');
+    const sendBtn              = document.getElementById('sendBtn');
+    const modelSelect          = document.getElementById('modelSelect');
+    const activeChatTitle      = document.getElementById('activeChatTitle');
+    const conversationsList    = document.getElementById('conversationsList');
+    const newChatBtn           = document.getElementById('newChatBtn');
+    const sidebar              = document.getElementById('sidebar');
+    const sidebarOverlay       = document.getElementById('sidebarOverlay');
+    const toggleSidebarBtn     = document.getElementById('toggleSidebarBtn');
+    const closeSidebarBtn      = document.getElementById('closeSidebarBtn');
     const openRouterIndicator  = document.getElementById('openRouterIndicator');
     const openRouterStatusText = document.getElementById('openRouterStatusText');
     const supabaseIndicator    = document.getElementById('supabaseIndicator');
     const supabaseStatusText   = document.getElementById('supabaseStatusText');
+    const plusBtn              = document.getElementById('plusBtn');
+    const attachBtn            = document.getElementById('attachBtn');
+    const fileUploadInput      = document.getElementById('fileUploadInput');
+    const attachedFilesWrapper = document.getElementById('attachedFilesWrapper');
+    const chatInputWrapper     = document.getElementById('chatInputWrapper');
 
     // ── Marked Config (ChatGPT Codeblock Style) ───────────────────────────
     try {
@@ -83,8 +89,6 @@ document.addEventListener('DOMContentLoaded', () => {
     loadConversations();
     setupEventListeners();
     setupTextareaAutoResize();
-
-    // Pastikan status tombol kirim sesuai isi input
     updateSendButtonState();
 
     // ── System Status (Kiri Bawah) ─────────────────────────────────────────
@@ -93,7 +97,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch('/api/status');
             const data = await res.json();
             const isOk = data.ai_configured ?? data.openrouter_configured;
-            const name = data.provider || 'AI Provider';
 
             openRouterIndicator.className = 'status-indicator ' + (isOk ? 'online' : 'fallback');
             openRouterStatusText.textContent = isOk ? 'Aktif' : 'Nonaktif';
@@ -211,16 +214,213 @@ document.addEventListener('DOMContentLoaded', () => {
         welcomeScreen.style.display = 'flex';
         messageInput.value = '';
         messageInput.style.height = 'auto';
+        attachedFiles = [];
+        renderAttachedFiles();
         updateSendButtonState();
         renderConversationsList();
         closeSidebarMobile();
         messageInput.focus();
     }
 
+    // ── File Upload & Parsing Engine ────────────────────────────────────────
+    async function handleFilesSelected(fileList) {
+        if (!fileList || fileList.length === 0) return;
+
+        for (const file of Array.from(fileList)) {
+            try {
+                const parsed = await extractFileContent(file);
+                if (parsed) {
+                    attachedFiles.push(parsed);
+                }
+            } catch(err) {
+                console.error('Gagal membaca berkas:', err);
+                attachedFiles.push({
+                    name: file.name,
+                    size: file.size,
+                    type: file.type,
+                    is_image: false,
+                    content: `[Berkas ${file.name} gagal dibaca: ${err.message}]`
+                });
+            }
+        }
+
+        renderAttachedFiles();
+        updateSendButtonState();
+    }
+
+    async function extractFileContent(file) {
+        const ext = file.name.split('.').pop().toLowerCase();
+
+        // 1. Gambar (Vision)
+        if (file.type.startsWith('image/')) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve({
+                    name: file.name,
+                    size: file.size,
+                    type: file.type,
+                    is_image: true,
+                    data_url: e.target.result,
+                    content: `[Lampiran Gambar: ${file.name}]`
+                });
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // 2. Dokumen PDF
+        if (ext === 'pdf' || file.type === 'application/pdf') {
+            if (typeof pdfjsLib !== 'undefined') {
+                try {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                    let fullText = '';
+                    const maxPages = Math.min(pdf.numPages, 50);
+                    for (let i = 1; i <= maxPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const textContent = await page.getTextContent();
+                        const pageText = textContent.items.map(item => item.str).join(' ');
+                        fullText += `\n--- Halaman ${i} ---\n` + pageText;
+                    }
+                    return {
+                        name: file.name,
+                        size: file.size,
+                        type: 'application/pdf',
+                        is_image: false,
+                        content: fullText.trim() || '[Dokumen PDF kosong atau berupa pindaian gambar]'
+                    };
+                } catch(e) {
+                    console.warn('PDF.js parsing gagal, fallback', e);
+                }
+            }
+        }
+
+        // 3. Dokumen Word (.docx)
+        if (ext === 'docx') {
+            if (typeof mammoth !== 'undefined') {
+                try {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const result = await mammoth.extractRawText({ arrayBuffer });
+                    return {
+                        name: file.name,
+                        size: file.size,
+                        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                        is_image: false,
+                        content: result.value.trim()
+                    };
+                } catch(e) {
+                    console.warn('Mammoth docx parsing gagal, fallback', e);
+                }
+            }
+        }
+
+        // 4. Dokumen Excel / Spreadsheet (.xlsx, .xls, .csv)
+        if (ext === 'xlsx' || ext === 'xls' || ext === 'csv') {
+            if (typeof XLSX !== 'undefined') {
+                try {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                    let sheetTexts = [];
+                    workbook.SheetNames.forEach(sheetName => {
+                        const sheet = workbook.Sheets[sheetName];
+                        const csv = XLSX.utils.sheet_to_csv(sheet);
+                        sheetTexts.push(`[Lembar: ${sheetName}]\n` + csv);
+                    });
+                    return {
+                        name: file.name,
+                        size: file.size,
+                        type: file.type || 'text/csv',
+                        is_image: false,
+                        content: sheetTexts.join('\n\n')
+                    };
+                } catch(e) {
+                    console.warn('XLSX parsing gagal, fallback', e);
+                }
+            }
+        }
+
+        // 5. Berkas Teks & Kode Pemrograman (.py, .js, .html, .css, .json, .txt, .md, .sql, .xml, .yaml, dll)
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                resolve({
+                    name: file.name,
+                    size: file.size,
+                    type: file.type || 'text/plain',
+                    is_image: false,
+                    content: e.target.result
+                });
+            };
+            reader.onerror = () => {
+                resolve({
+                    name: file.name,
+                    size: file.size,
+                    type: file.type || 'application/octet-stream',
+                    is_image: false,
+                    content: `[Berkas biner: ${file.name} (${file.size} bytes)]`
+                });
+            };
+            reader.readAsText(file);
+        });
+    }
+
+    function renderAttachedFiles() {
+        if (!attachedFiles.length) {
+            attachedFilesWrapper.innerHTML = '';
+            attachedFilesWrapper.style.display = 'none';
+            return;
+        }
+
+        attachedFilesWrapper.style.display = 'flex';
+        attachedFilesWrapper.innerHTML = '';
+
+        attachedFiles.forEach((file, index) => {
+            const chip = document.createElement('div');
+            chip.className = 'attached-file-chip';
+
+            const ext = file.name.split('.').pop().toUpperCase() || 'FILE';
+            const iconHtml = file.is_image && file.data_url
+                ? `<img src="${file.data_url}" alt="${escapeHtml(file.name)}" class="file-chip-thumb">`
+                : `<div class="file-chip-icon">${escapeHtml(ext.substring(0, 4))}</div>`;
+
+            chip.innerHTML = `
+                ${iconHtml}
+                <div class="file-chip-info">
+                    <span class="file-chip-name" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span>
+                    <span class="file-chip-size">${formatFileSize(file.size)}</span>
+                </div>
+                <button type="button" class="file-chip-remove" title="Hapus berkas" aria-label="Hapus">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            `;
+
+            chip.querySelector('.file-chip-remove').addEventListener('click', (e) => {
+                e.stopPropagation();
+                attachedFiles.splice(index, 1);
+                renderAttachedFiles();
+                updateSendButtonState();
+            });
+
+            attachedFilesWrapper.appendChild(chip);
+        });
+    }
+
+    function formatFileSize(bytes) {
+        if (!bytes || isNaN(bytes)) return '';
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
     // ── Send Message ────────────────────────────────────────────────────────
     async function sendMessage(text) {
-        const message = (text || messageInput.value).trim();
-        if (!message || isGenerating) return;
+        const rawMessage = (text || messageInput.value).trim();
+        const filesToSend = [...attachedFiles];
+
+        if (!rawMessage && filesToSend.length === 0) return;
+        if (isGenerating) return;
 
         isGenerating = true;
         sendBtn.disabled = true;
@@ -228,9 +428,14 @@ document.addEventListener('DOMContentLoaded', () => {
         mainContent.classList.remove('is-empty');
         welcomeScreen.style.display = 'none';
 
-        appendMessageToUI('user', message);
+        // Tampilkan pesan user di UI dengan pratinjau lampiran
+        appendUserMessageWithAttachments(rawMessage, filesToSend);
+
+        // Reset input dan chip lampiran
         messageInput.value = '';
         messageInput.style.height = 'auto';
+        attachedFiles = [];
+        renderAttachedFiles();
         updateSendButtonState();
         scrollToBottom();
 
@@ -239,7 +444,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const payload = {
-                message,
+                message: rawMessage,
+                files: filesToSend,
                 conversation_id: activeConversationId,
                 model: modelSelect.value
             };
@@ -256,7 +462,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.success) {
                 if (!activeConversationId && data.conversation_id) {
                     activeConversationId = data.conversation_id;
-                    const newTitle = message.substring(0, 30) + (message.length > 30 ? '...' : '');
+                    const displayTitle = rawMessage || (filesToSend.length > 0 ? `Berkas: ${filesToSend[0].name}` : 'Obrolan');
+                    const newTitle = displayTitle.substring(0, 30) + (displayTitle.length > 30 ? '...' : '');
                     activeChatTitle.textContent = newTitle;
                     await loadConversations();
                 }
@@ -275,92 +482,126 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // ── Render Message ─────────────────────────────────────────────────────
-    function appendMessageToUI(role, content, timestamp) {
-        const row = document.createElement('div');
-        row.className = `message-row ${role}`;
+    // ── Render User Message with Attachments ────────────────────────────────
+    function appendUserMessageWithAttachments(message, files) {
+        let contentHtml = '';
 
-        const isUser = role === 'user';
-        const timeStr = timestamp ? formatTime(timestamp) : formatTime(new Date());
-
-        const avatarHtml = isUser
-            ? `<div class="avatar user">Anda</div>`
-            : `<div class="avatar ai">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <circle cx="12" cy="12" r="3"></circle>
-                    <path d="M12 2v2"></path><path d="M12 20v2"></path>
-                    <path d="m4.93 4.93 1.41 1.41"></path>
-                    <path d="m17.66 17.66 1.41 1.41"></path>
-                    <path d="M2 12h2"></path><path d="M20 12h2"></path>
-                    <path d="m6.34 17.66-1.41 1.41"></path>
-                    <path d="m19.07 4.93-1.41 1.41"></path>
-                </svg>
-               </div>`;
-
-        let bubbleHtml = '';
-        if (isUser) {
-            bubbleHtml = `<div class="message-bubble">${escapeHtml(content)}</div>`;
-        } else {
-            let parsed = '';
-            try { parsed = marked.parse(content); } catch(e) { parsed = escapeHtml(content); }
-            bubbleHtml = `<div class="message-bubble">${parsed}</div>`;
-        }
-
-        row.innerHTML = `
-            ${!isUser ? avatarHtml : ''}
-            <div class="message-body">
-                ${bubbleHtml}
-                <span class="message-meta">${timeStr}</span>
-            </div>
-            ${isUser ? avatarHtml : ''}
-        `;
-
-        // Code block copy button & table scroll wrapper
-        if (!isUser) {
-            // Salin kode ChatGPT-style
-            row.querySelectorAll('.code-block-copy').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const wrapper = btn.closest('.code-block-wrapper');
-                    const code = wrapper ? wrapper.querySelector('code')?.innerText || '' : '';
-                    navigator.clipboard.writeText(code).then(() => {
-                        const label = btn.querySelector('.copy-label');
-                        if (label) label.textContent = 'Tersalin!';
-                        btn.classList.add('copied');
-                        setTimeout(() => {
-                            if (label) label.textContent = 'Salin kode';
-                            btn.classList.remove('copied');
-                        }, 2000);
-                    });
-                });
-            });
-
-            // Fallback untuk <pre> standar jika ada
-            row.querySelectorAll('pre:not(.code-block-pre)').forEach(pre => {
-                if (pre.closest('.code-block-wrapper')) return;
-                const btn = document.createElement('button');
-                btn.className = 'code-copy-btn';
-                btn.textContent = 'Salin';
-                btn.addEventListener('click', () => {
-                    const code = pre.querySelector('code')?.innerText || pre.innerText;
-                    navigator.clipboard.writeText(code).then(() => {
-                        btn.textContent = 'Tersalin ✓';
-                        setTimeout(() => { btn.textContent = 'Salin'; }, 2000);
-                    });
-                });
-                pre.style.position = 'relative';
-                pre.appendChild(btn);
-            });
-
-            // Bungkus setiap tabel agar bisa digeser ke kanan-kiri (horizontal scroll)
-            row.querySelectorAll('table').forEach(table => {
-                if (!table.parentElement.classList.contains('table-wrap')) {
-                    const wrapper = document.createElement('div');
-                    wrapper.className = 'table-wrap';
-                    table.parentNode.insertBefore(wrapper, table);
-                    wrapper.appendChild(table);
+        if (files && files.length > 0) {
+            contentHtml += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">';
+            files.forEach(f => {
+                if (f.is_image && f.data_url) {
+                    contentHtml += `<div><img src="${f.data_url}" alt="${escapeHtml(f.name)}" class="chat-image-preview"></div>`;
+                } else {
+                    const ext = f.name.split('.').pop().toUpperCase() || 'FILE';
+                    contentHtml += `
+                        <div class="attached-file-chip" style="background:var(--main-bg);box-shadow:none;">
+                            <div class="file-chip-icon">${escapeHtml(ext.substring(0, 4))}</div>
+                            <div class="file-chip-info">
+                                <span class="file-chip-name">${escapeHtml(f.name)}</span>
+                                <span class="file-chip-size">${formatFileSize(f.size)}</span>
+                            </div>
+                        </div>
+                    `;
                 }
             });
+            contentHtml += '</div>';
         }
+
+        if (message) {
+            contentHtml += `<div style="white-space:pre-wrap;">${escapeHtml(message)}</div>`;
+        } else if (files && files.length > 0) {
+            contentHtml += `<div style="font-size:0.85rem;color:var(--text-muted);font-style:italic;">[Melampirkan ${files.length} berkas]</div>`;
+        }
+
+        const row = document.createElement('div');
+        row.className = 'message-row user';
+        const timeStr = formatTime(new Date());
+
+        row.innerHTML = `
+            <div class="avatar user">Anda</div>
+            <div class="message-body">
+                <div class="message-bubble">${contentHtml}</div>
+                <span class="message-meta">${timeStr}</span>
+            </div>
+        `;
+
+        messagesList.appendChild(row);
+    }
+
+    // ── Render AI Response ─────────────────────────────────────────────────
+    function appendMessageToUI(role, content, timestamp) {
+        if (role === 'user') {
+            // Untuk history reload
+            const row = document.createElement('div');
+            row.className = 'message-row user';
+            const timeStr = timestamp ? formatTime(timestamp) : formatTime(new Date());
+            let parsedUser = '';
+            try { parsedUser = marked.parse(content); } catch(e) { parsedUser = escapeHtml(content); }
+
+            row.innerHTML = `
+                <div class="avatar user">Anda</div>
+                <div class="message-body">
+                    <div class="message-bubble">${parsedUser}</div>
+                    <span class="message-meta">${timeStr}</span>
+                </div>
+            `;
+            messagesList.appendChild(row);
+            return;
+        }
+
+        const row = document.createElement('div');
+        row.className = `message-row ${role}`;
+        const timeStr = timestamp ? formatTime(timestamp) : formatTime(new Date());
+
+        const avatarHtml = `<div class="avatar ai">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M12 2v2"></path><path d="M12 20v2"></path>
+                <path d="m4.93 4.93 1.41 1.41"></path>
+                <path d="m17.66 17.66 1.41 1.41"></path>
+                <path d="M2 12h2"></path><path d="M20 12h2"></path>
+                <path d="m6.34 17.66-1.41 1.41"></path>
+                <path d="m19.07 4.93-1.41 1.41"></path>
+            </svg>
+        </div>`;
+
+        let bubbleHtml = '';
+        try { bubbleHtml = marked.parse(content); } catch(e) { bubbleHtml = escapeHtml(content); }
+
+        row.innerHTML = `
+            ${avatarHtml}
+            <div class="message-body">
+                <div class="message-bubble">${bubbleHtml}</div>
+                <span class="message-meta">${timeStr}</span>
+            </div>
+        `;
+
+        // Salin kode ChatGPT-style
+        row.querySelectorAll('.code-block-copy').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const wrapper = btn.closest('.code-block-wrapper');
+                const code = wrapper ? wrapper.querySelector('code')?.innerText || '' : '';
+                navigator.clipboard.writeText(code).then(() => {
+                    const label = btn.querySelector('.copy-label');
+                    if (label) label.textContent = 'Tersalin!';
+                    btn.classList.add('copied');
+                    setTimeout(() => {
+                        if (label) label.textContent = 'Salin kode';
+                        btn.classList.remove('copied');
+                    }, 2000);
+                });
+            });
+        });
+
+        // Bungkus tabel agar bisa digeser horizontal
+        row.querySelectorAll('table').forEach(table => {
+            if (!table.parentElement.classList.contains('table-wrap')) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'table-wrap';
+                table.parentNode.insertBefore(wrapper, table);
+                wrapper.appendChild(table);
+            }
+        });
 
         messagesList.appendChild(row);
     }
@@ -372,6 +613,24 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
         });
         newChatBtn.addEventListener('click', resetToNewChat);
+
+        // Upload berkas via tombol + atau ikon lampiran
+        if (plusBtn) plusBtn.addEventListener('click', () => fileUploadInput.click());
+        if (attachBtn) attachBtn.addEventListener('click', () => fileUploadInput.click());
+
+        fileUploadInput.addEventListener('change', (e) => {
+            handleFilesSelected(e.target.files);
+            fileUploadInput.value = '';
+        });
+
+        // Drag & Drop berkas langsung ke area input atau layar
+        window.addEventListener('dragover', (e) => e.preventDefault());
+        window.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                handleFilesSelected(e.dataTransfer.files);
+            }
+        });
 
         // Sidebar Nav items
         ['navGambar', 'navPustaka', 'navTerjadwal', 'navPlugin'].forEach(id => {
@@ -393,9 +652,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateSendButtonState() {
-        const hasText = messageInput.value.trim().length > 0;
-        sendBtn.disabled = !hasText || isGenerating;
-        if (hasText && !isGenerating) {
+        const canSend = messageInput.value.trim().length > 0 || attachedFiles.length > 0;
+        sendBtn.disabled = !canSend || isGenerating;
+        if (canSend && !isGenerating) {
             sendBtn.classList.add('active');
         } else {
             sendBtn.classList.remove('active');

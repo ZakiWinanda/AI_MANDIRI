@@ -260,23 +260,31 @@ def chat():
     """Endpoint utama untuk bertukar pesan dengan AI via 9Router / OpenRouter."""
     data = request.get_json() or {}
     user_message = data.get('message', '').strip()
+    files_data = data.get('files', [])
     conv_id = data.get('conversation_id')
     custom_model = data.get('model') or AI_MODEL
     system_prompt = data.get('system_prompt') or (
         "Kamu adalah asisten AI yang cerdas, sopan, ramah, dan sangat membantu. "
         "Gunakan format Markdown yang rapi untuk semua respon. "
+        "Jika ada berkas atau dokumen yang dilampirkan oleh pengguna, bacalah dengan teliti dan gunakan informasinya untuk menjawab pertanyaan. "
         "Jika menulis kode atau script pemrograman, SELALU gunakan format markdown codeblock "
         "lengkap dengan nama bahasanya (contoh: ```python ... ```, ```javascript ... ```, ```sql ... ```)."
     )
 
-    if not user_message:
-        return jsonify({'success': False, 'error': 'Pesan tidak boleh kosong'}), 400
+    if not user_message and not files_data:
+        return jsonify({'success': False, 'error': 'Pesan atau berkas tidak boleh kosong'}), 400
+
+    if not user_message and files_data:
+        user_message = "Tolong baca, analisis, dan jelaskan isi berkas yang saya lampirkan ini."
 
     # 1. Pastikan conversation_id valid atau buat yang baru
     now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
     if not conv_id:
         conv_id = str(uuid.uuid4())
-        first_title = user_message[:35] + ('...' if len(user_message) > 35 else '')
+        if files_data and not data.get('message'):
+            first_title = f"Berkas: {files_data[0].get('name', 'Dokumen')}"[:35]
+        else:
+            first_title = user_message[:35] + ('...' if len(user_message) > 35 else '')
         if supabase_client:
             supabase_client.create_conversation(conv_id, first_title, now_iso, now_iso)
         else:
@@ -288,7 +296,45 @@ def chat():
             }
             in_memory_messages[conv_id] = []
 
-    # 2. Ambil konteks riwayat obrolan terdahulu
+    # 2. Susun berkas lampiran ke dalam konteks prompt
+    attachment_blocks = []
+    has_images = False
+
+    for f in files_data:
+        fname = f.get('name', 'file')
+        ftype = f.get('type', '')
+        fcontent = f.get('content', '')
+        is_img = f.get('is_image', False)
+
+        if is_img:
+            has_images = True
+            attachment_blocks.append(f"📎 **[Lampiran Gambar: {fname}]**")
+        elif fcontent:
+            attachment_blocks.append(
+                f"<details open>\n<summary>📎 <b>Berkas: {fname}</b></summary>\n\n"
+                f"```\n{fcontent}\n```\n</details>"
+            )
+
+    full_user_prompt = user_message
+    if attachment_blocks:
+        full_user_prompt = "\n\n".join(attachment_blocks) + "\n\n" + user_message
+
+    # Format user message object (Mendukung Vision untuk gambar)
+    if has_images:
+        user_content_payload = [{"type": "text", "text": full_user_prompt}]
+        for f in files_data:
+            if f.get('is_image') and f.get('data_url'):
+                user_content_payload.append({
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f["data_url"]
+                    }
+                })
+        user_msg_api = {'role': 'user', 'content': user_content_payload}
+    else:
+        user_msg_api = {'role': 'user', 'content': full_user_prompt}
+
+    # 3. Ambil konteks riwayat obrolan terdahulu
     history = get_conversation_history(conv_id, limit=10)
     messages_payload = [{'role': 'system', 'content': system_prompt}]
     for msg in history:
@@ -296,14 +342,14 @@ def chat():
             'role': msg['role'],
             'content': msg['content']
         })
-    messages_payload.append({'role': 'user', 'content': user_message})
+    messages_payload.append(user_msg_api)
 
-    # 3. Simpan pesan User terlebih dahulu ke Database
+    # 4. Simpan pesan User terlebih dahulu ke Database
     user_msg_record = {
         'id': str(uuid.uuid4()),
         'conversation_id': conv_id,
         'role': 'user',
-        'content': user_message,
+        'content': full_user_prompt,
         'created_at': now_iso
     }
     if supabase_client:
@@ -311,7 +357,7 @@ def chat():
     else:
         in_memory_messages.setdefault(conv_id, []).append(user_msg_record)
 
-    # 4. Hubungi 9Router / OpenRouter API
+    # 5. Hubungi 9Router / OpenRouter API
     api_key = AI_API_KEY
     if not api_key or api_key.startswith('sk-or-v1-xxxx'):
         reply_content = (
@@ -339,6 +385,22 @@ def chat():
                 json=payload,
                 timeout=60
             )
+            # Fallback jika model text-only menolak array content vision
+            if resp.status_code == 400 and has_images:
+                fallback_messages = []
+                for m in messages_payload:
+                    if isinstance(m.get('content'), list):
+                        text_parts = [p.get('text', '') for p in m['content'] if p.get('type') == 'text']
+                        fallback_messages.append({'role': m['role'], 'content': "\n".join(text_parts)})
+                    else:
+                        fallback_messages.append(m)
+                payload['messages'] = fallback_messages
+                resp = requests.post(
+                    endpoint_url,
+                    headers=headers,
+                    json=payload,
+                    timeout=60
+                )
             resp.encoding = 'utf-8'
 
             if resp.status_code == 200:

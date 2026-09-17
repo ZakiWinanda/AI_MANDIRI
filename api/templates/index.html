@@ -21,8 +21,18 @@
         id="hljsTheme">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 
+    <!-- File Parsers: PDF, Word (DOCX), Excel & CSV (XLSX) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        if (typeof pdfjsLib !== 'undefined') {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
     <!-- Style -->
-    <link rel="stylesheet" href="/static/css/chatgpt.css?v=2.1">
+    <link rel="stylesheet" href="/static/css/chatgpt.css?v=3.0">
 
     <!-- ⬇ THEME LOGIC — di <head> agar langsung aktif sebelum body render -->
     <script>
@@ -210,55 +220,61 @@
                 </div>
             </div>
 
-            <!-- Input Bar: Kapsul persis ChatGPT -->
+            <!-- Input Bar: Kapsul persis ChatGPT dengan upload file -->
             <footer class="chat-input-wrapper" id="chatInputWrapper">
                 <form class="chat-input-form" id="chatForm">
                     <div class="input-box-container">
-                        <button type="button" class="input-action-btn plus-btn" title="Lampirkan file"
-                            aria-label="Tambah">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2.5">
-                                <line x1="12" y1="5" x2="12" y2="19"></line>
-                                <line x1="5" y1="12" x2="19" y2="12"></line>
-                            </svg>
-                        </button>
-                        <textarea id="messageInput" class="message-textarea" rows="1" placeholder="Tanyakan apa saja"
-                            aria-label="Input pesan"></textarea>
-                        <div class="input-actions-right">
-                            <button type="button" class="tool-pill-btn" title="Mode Berpikir">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2">
-                                    <circle cx="12" cy="12" r="10"></circle>
-                                    <line x1="12" y1="16" x2="12" y2="12"></line>
-                                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                                </svg>
-                                <span>Berpikir</span>
-                            </button>
-                            <button type="button" class="input-action-btn attach-btn" title="Alat tambahan"
-                                aria-label="Alat">
-                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2">
-                                    <path
-                                        d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48">
-                                    </path>
-                                </svg>
-                            </button>
-                            <button type="submit" class="send-btn" id="sendBtn" aria-label="Kirim">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        <!-- Chip berkas yang dilampirkan -->
+                        <div class="attached-files-wrapper" id="attachedFilesWrapper" style="display: none;"></div>
+                        <div class="input-box-main">
+                            <button type="button" class="input-action-btn plus-btn" id="plusBtn" title="Lampirkan file atau gambar"
+                                aria-label="Tambah">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                     stroke-width="2.5">
-                                    <line x1="12" y1="19" x2="12" y2="5"></line>
-                                    <polyline points="5 12 12 5 19 12"></polyline>
+                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
                                 </svg>
                             </button>
+                            <textarea id="messageInput" class="message-textarea" rows="1" placeholder="Tanyakan apa saja atau lampirkan berkas..."
+                                aria-label="Input pesan"></textarea>
+                            <div class="input-actions-right">
+                                <button type="button" class="tool-pill-btn" title="Mode Berpikir">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                                    </svg>
+                                    <span>Berpikir</span>
+                                </button>
+                                <button type="button" class="input-action-btn attach-btn" id="attachBtn" title="Lampirkan file"
+                                    aria-label="Alat">
+                                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <path
+                                            d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48">
+                                        </path>
+                                    </svg>
+                                </button>
+                                <button type="submit" class="send-btn" id="sendBtn" aria-label="Kirim">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2.5">
+                                        <line x1="12" y1="19" x2="12" y2="5"></line>
+                                        <polyline points="5 12 12 5 19 12"></polyline>
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
                     </div>
+                    <!-- Hidden File Input untuk menerima segala jenis file -->
+                    <input type="file" id="fileUploadInput" multiple style="display: none;" accept="*">
                 </form>
                 <div class="input-footer-note">AI dapat membuat kesalahan. Selalu verifikasi informasi penting.</div>
             </footer>
         </main>
     </div>
 
-    <script src="/static/js/app-chatgpt.js?v=2.1"></script>
+    <script src="/static/js/app-chatgpt.js?v=3.0"></script>
 </body>
 
 </html>
