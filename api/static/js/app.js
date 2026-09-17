@@ -66,12 +66,14 @@ document.addEventListener('DOMContentLoaded', () => {
     function initTheme() {
         const savedTheme = localStorage.getItem('nova_theme') || 'dark';
         document.documentElement.setAttribute('data-theme', savedTheme);
+        document.body.setAttribute('data-theme', savedTheme);
     }
 
     function toggleTheme() {
         const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
         const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
         document.documentElement.setAttribute('data-theme', newTheme);
+        document.body.setAttribute('data-theme', newTheme);
         localStorage.setItem('nova_theme', newTheme);
     }
 
