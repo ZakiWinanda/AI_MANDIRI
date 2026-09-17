@@ -1,6 +1,6 @@
 /**
- * NovaAI — ChatGPT-Style App Logic
- * Theme dihandle di index.html <head> — file ini hanya untuk interaksi chat.
+ * ChatGPT-Style App Logic
+ * Clean, No Logo, No Brand, Centered Empty State
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let isGenerating = false;
 
     // ── DOM ────────────────────────────────────────────────────────────────
+    const mainContent      = document.getElementById('mainContent');
     const chatContainer    = document.getElementById('chatContainer');
     const messagesList     = document.getElementById('messagesList');
     const welcomeScreen    = document.getElementById('welcomeScreen');
@@ -30,10 +31,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const openRouterStatusText = document.getElementById('openRouterStatusText');
     const supabaseIndicator    = document.getElementById('supabaseIndicator');
     const supabaseStatusText   = document.getElementById('supabaseStatusText');
-    const infoModal        = document.getElementById('infoModal');
-    const openInfoModalBtn = document.getElementById('openInfoModalBtn');
-    const closeInfoModalBtn= document.getElementById('closeInfoModalBtn');
-    const modalUnderstandBtn= document.getElementById('modalUnderstandBtn');
 
     // ── Marked Config (ChatGPT Codeblock Style) ───────────────────────────
     try {
@@ -86,15 +83,11 @@ document.addEventListener('DOMContentLoaded', () => {
     loadConversations();
     setupEventListeners();
     setupTextareaAutoResize();
-    syncModelDropdown();
 
-    // Pastikan data-theme juga di body setelah DOM siap
-    const savedTheme = (() => {
-        try { return localStorage.getItem('nova_theme') || 'dark'; } catch(e) { return 'dark'; }
-    })();
-    document.body.setAttribute('data-theme', savedTheme);
+    // Pastikan status tombol kirim sesuai isi input
+    updateSendButtonState();
 
-    // ── System Status ─────────────────────────────────────────────────────
+    // ── System Status (Kiri Bawah) ─────────────────────────────────────────
     async function checkSystemStatus() {
         try {
             const res = await fetch('/api/status');
@@ -103,29 +96,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const name = data.provider || 'AI Provider';
 
             openRouterIndicator.className = 'status-indicator ' + (isOk ? 'online' : 'fallback');
-            openRouterStatusText.textContent = isOk ? name : 'Belum dikonfigurasi';
+            openRouterStatusText.textContent = isOk ? 'Aktif' : 'Nonaktif';
 
             supabaseIndicator.className = 'status-indicator ' + (data.supabase_configured ? 'online' : 'fallback');
-            supabaseStatusText.textContent = data.supabase_configured ? 'Aktif (Cloud)' : 'In-Memory (Lokal)';
-
-            if (data.active_model && modelSelect) {
-                for (let i = 0; i < modelSelect.options.length; i++) {
-                    if (modelSelect.options[i].value === data.active_model) {
-                        modelSelect.selectedIndex = i;
-                        break;
-                    }
-                }
-            }
+            supabaseStatusText.textContent = data.supabase_configured ? 'Tersambung' : 'Lokal';
         } catch(err) {
             openRouterIndicator.className = 'status-indicator offline';
             openRouterStatusText.textContent = 'Offline';
             supabaseIndicator.className = 'status-indicator offline';
             supabaseStatusText.textContent = 'Offline';
         }
-    }
-
-    function syncModelDropdown() {
-        // Jika default model sudah sesuai dengan select, tidak perlu apa-apa
     }
 
     // ── Conversations ──────────────────────────────────────────────────────
@@ -138,13 +118,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderConversationsList();
             }
         } catch(err) {
-            conversationsList.innerHTML = '<div style="padding:1rem;font-size:0.78rem;color:var(--text-muted);text-align:center">Belum ada riwayat</div>';
+            conversationsList.innerHTML = '<div style="padding:1rem;font-size:0.78rem;color:var(--sidebar-text-muted);text-align:center">Belum ada riwayat</div>';
         }
     }
 
     function renderConversationsList() {
         if (!conversations.length) {
-            conversationsList.innerHTML = '<div style="padding:0.8rem 0.5rem;font-size:0.78rem;color:var(--text-muted);text-align:center">Belum ada riwayat obrolan</div>';
+            conversationsList.innerHTML = '<div style="padding:0.8rem 0.5rem;font-size:0.78rem;color:var(--sidebar-text-muted);text-align:center">Belum ada riwayat</div>';
             return;
         }
 
@@ -161,7 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </svg>
                     <span class="conv-item-title">${escapeHtml(conv.title || 'Obrolan')}</span>
                 </div>
-                <button class="delete-conv-btn" title="Hapus" aria-label="Hapus percakapan">
+                <button class="delete-conv-btn" title="Hapus" aria-label="Hapus obrolan">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="3 6 5 6 21 6"></polyline>
                         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -187,9 +167,10 @@ document.addEventListener('DOMContentLoaded', () => {
     async function switchConversation(convId, title) {
         if (activeConversationId === convId) return;
         activeConversationId = convId;
-        activeChatTitle.textContent = title || 'Obrolan';
+        activeChatTitle.textContent = title || '';
         renderConversationsList();
 
+        mainContent.classList.remove('is-empty');
         welcomeScreen.style.display = 'none';
         messagesList.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-muted);font-size:0.85rem">Memuat pesan...</div>';
 
@@ -201,6 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 data.messages.forEach(msg => appendMessageToUI(msg.role, msg.content, msg.created_at));
                 scrollToBottom();
             } else {
+                mainContent.classList.add('is-empty');
                 welcomeScreen.style.display = 'flex';
             }
         } catch(err) {
@@ -209,7 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function deleteConversation(convId) {
-        if (!confirm('Yakin ingin menghapus percakapan ini?')) return;
+        if (!confirm('Hapus obrolan ini?')) return;
         try {
             const res = await fetch(`/api/conversations/${convId}`, { method: 'DELETE' });
             const data = await res.json();
@@ -223,13 +205,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function resetToNewChat() {
         activeConversationId = null;
-        activeChatTitle.textContent = 'Obrolan Baru';
+        activeChatTitle.textContent = '';
         messagesList.innerHTML = '';
+        mainContent.classList.add('is-empty');
         welcomeScreen.style.display = 'flex';
         messageInput.value = '';
         messageInput.style.height = 'auto';
+        updateSendButtonState();
         renderConversationsList();
         closeSidebarMobile();
+        messageInput.focus();
     }
 
     // ── Send Message ────────────────────────────────────────────────────────
@@ -239,11 +224,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         isGenerating = true;
         sendBtn.disabled = true;
+
+        mainContent.classList.remove('is-empty');
         welcomeScreen.style.display = 'none';
 
         appendMessageToUI('user', message);
         messageInput.value = '';
         messageInput.style.height = 'auto';
+        updateSendButtonState();
         scrollToBottom();
 
         typingIndicator.style.display = 'flex';
@@ -281,7 +269,7 @@ document.addEventListener('DOMContentLoaded', () => {
             appendMessageToUI('assistant', '❌ **Gagal terhubung:** Terjadi gangguan jaringan atau server.');
         } finally {
             isGenerating = false;
-            sendBtn.disabled = false;
+            updateSendButtonState();
             scrollToBottom();
             messageInput.focus();
         }
@@ -299,11 +287,13 @@ document.addEventListener('DOMContentLoaded', () => {
             ? `<div class="avatar user">Anda</div>`
             : `<div class="avatar ai">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <path d="M12 2v8"/><path d="m4.93 10.93 1.41 1.41"/>
-                    <path d="M2 18h2"/><path d="M20 18h2"/>
-                    <path d="m19.07 10.93-1.41 1.41"/>
-                    <path d="M22 22H2"/>
-                    <path d="m8 22 4-10 4 10"/>
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M12 2v2"></path><path d="M12 20v2"></path>
+                    <path d="m4.93 4.93 1.41 1.41"></path>
+                    <path d="m17.66 17.66 1.41 1.41"></path>
+                    <path d="M2 12h2"></path><path d="M20 12h2"></path>
+                    <path d="m6.34 17.66-1.41 1.41"></path>
+                    <path d="m19.07 4.93-1.41 1.41"></path>
                 </svg>
                </div>`;
 
@@ -383,28 +373,33 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         newChatBtn.addEventListener('click', resetToNewChat);
 
-        document.querySelectorAll('.suggestion-card').forEach(card => {
-            card.addEventListener('click', () => {
-                const prompt = card.dataset.prompt;
-                if (prompt) sendMessage(prompt);
-            });
+        // Sidebar Nav items
+        ['navGambar', 'navPustaka', 'navTerjadwal', 'navPlugin'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('click', () => resetToNewChat());
         });
 
         if (toggleSidebarBtn) toggleSidebarBtn.addEventListener('click', openSidebarMobile);
         if (closeSidebarBtn)  closeSidebarBtn.addEventListener('click', closeSidebarMobile);
         if (sidebarOverlay)   sidebarOverlay.addEventListener('click', closeSidebarMobile);
-
-        if (openInfoModalBtn)   openInfoModalBtn.addEventListener('click',  () => infoModal.classList.add('open'));
-        if (closeInfoModalBtn)  closeInfoModalBtn.addEventListener('click', () => infoModal.classList.remove('open'));
-        if (modalUnderstandBtn) modalUnderstandBtn.addEventListener('click',() => infoModal.classList.remove('open'));
-        if (infoModal) infoModal.addEventListener('click', e => { if (e.target === infoModal) infoModal.classList.remove('open'); });
     }
 
     function setupTextareaAutoResize() {
         messageInput.addEventListener('input', () => {
             messageInput.style.height = 'auto';
             messageInput.style.height = `${Math.min(messageInput.scrollHeight, 200)}px`;
+            updateSendButtonState();
         });
+    }
+
+    function updateSendButtonState() {
+        const hasText = messageInput.value.trim().length > 0;
+        sendBtn.disabled = !hasText || isGenerating;
+        if (hasText && !isGenerating) {
+            sendBtn.classList.add('active');
+        } else {
+            sendBtn.classList.remove('active');
+        }
     }
 
     function openSidebarMobile() {
