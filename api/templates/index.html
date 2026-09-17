@@ -18,33 +18,43 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 
     <!-- Custom Style -->
-    <link rel="stylesheet" href="/static/css/style-v2.css">
+    <link rel="stylesheet" href="/static/css/style-v2.css?v=6">
     <script>
-        window.applyThemeUI = function(theme) {
-            theme = theme || localStorage.getItem('nova_theme') || 'dark';
+        function applyThemeUI(theme) {
+            try {
+                theme = theme || localStorage.getItem('nova_theme') || 'dark';
+            } catch(e) {
+                theme = theme || 'dark';
+            }
             document.documentElement.setAttribute('data-theme', theme);
             if (document.body) document.body.setAttribute('data-theme', theme);
 
             var sunIcons = document.querySelectorAll('.icon-sun');
             var moonIcons = document.querySelectorAll('.icon-moon');
+            for (var i = 0; i < sunIcons.length; i++) {
+                sunIcons[i].style.setProperty('display', theme === 'light' ? 'block' : 'none', 'important');
+            }
+            for (var j = 0; j < moonIcons.length; j++) {
+                moonIcons[j].style.setProperty('display', theme === 'dark' ? 'block' : 'none', 'important');
+            }
+        }
 
-            sunIcons.forEach(function(icon) {
-                icon.style.setProperty('display', theme === 'light' ? 'block' : 'none', 'important');
-            });
-            moonIcons.forEach(function(icon) {
-                icon.style.setProperty('display', theme === 'dark' ? 'block' : 'none', 'important');
-            });
-        };
-
-        window.toggleTheme = function() {
+        function toggleTheme() {
             var currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
             var newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            localStorage.setItem('nova_theme', newTheme);
-            window.applyThemeUI(newTheme);
-        };
+            try {
+                localStorage.setItem('nova_theme', newTheme);
+            } catch(e) {}
+            applyThemeUI(newTheme);
+        }
 
-        // Run immediately
-        window.applyThemeUI();
+        window.toggleTheme = toggleTheme;
+        window.applyThemeUI = applyThemeUI;
+
+        try {
+            var initThemeVal = localStorage.getItem('nova_theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', initThemeVal);
+        } catch(e) {}
     </script>
 </head>
 <body>
@@ -292,6 +302,6 @@ SUPABASE_KEY=anon-key-anda...</code></pre>
     </div>
 
     <!-- Scripts -->
-    <script src="/static/js/app-v2.js"></script>
+    <script src="/static/js/app-v2.js?v=6"></script>
 </body>
 </html>
