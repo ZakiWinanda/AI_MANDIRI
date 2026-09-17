@@ -18,12 +18,33 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 
     <!-- Custom Style -->
-    <link rel="stylesheet" href="/static/css/style.css?v=5">
+    <link rel="stylesheet" href="/static/css/style-v2.css">
     <script>
-        (function() {
-            var theme = localStorage.getItem('nova_theme') || 'dark';
+        window.applyThemeUI = function(theme) {
+            theme = theme || localStorage.getItem('nova_theme') || 'dark';
             document.documentElement.setAttribute('data-theme', theme);
-        })();
+            if (document.body) document.body.setAttribute('data-theme', theme);
+
+            var sunIcons = document.querySelectorAll('.icon-sun');
+            var moonIcons = document.querySelectorAll('.icon-moon');
+
+            sunIcons.forEach(function(icon) {
+                icon.style.setProperty('display', theme === 'light' ? 'block' : 'none', 'important');
+            });
+            moonIcons.forEach(function(icon) {
+                icon.style.setProperty('display', theme === 'dark' ? 'block' : 'none', 'important');
+            });
+        };
+
+        window.toggleTheme = function() {
+            var currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+            var newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            localStorage.setItem('nova_theme', newTheme);
+            window.applyThemeUI(newTheme);
+        };
+
+        // Run immediately
+        window.applyThemeUI();
     </script>
 </head>
 <body>
@@ -271,6 +292,6 @@ SUPABASE_KEY=anon-key-anda...</code></pre>
     </div>
 
     <!-- Scripts -->
-    <script src="/static/js/app.js?v=5"></script>
+    <script src="/static/js/app-v2.js"></script>
 </body>
 </html>
