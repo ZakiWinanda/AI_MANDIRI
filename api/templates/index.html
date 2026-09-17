@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NovaAI — Personal AI Assistant</title>
-    <meta name="description" content="Asisten AI pribadi bertenaga OpenRouter API, Supabase, dan Flask.">
+    <title>Chat</title>
+    <meta name="description" content="AI Assistant">
     <meta name="theme-color" content="#212121">
 
     <!-- Google Fonts -->
@@ -18,7 +18,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 
     <!-- Style -->
-    <link rel="stylesheet" href="/static/css/chatgpt.css?v=1.1">
+    <link rel="stylesheet" href="/static/css/chatgpt.css?v=1.2">
 
     <!-- ⬇ THEME LOGIC — harus di <head> agar langsung aktif sebelum body render -->
     <script>
@@ -59,10 +59,6 @@
                         <path d="M22 22H2"/>
                         <path d="m8 22 4-10 4 10"/>
                     </svg>
-                </div>
-                <div class="brand-text">
-                    <h2>NovaAI</h2>
-                    <span class="badge-ver">Flask · Supabase</span>
                 </div>
             </div>
             <button class="icon-btn close-sidebar-btn" id="closeSidebarBtn" aria-label="Tutup sidebar">
@@ -118,7 +114,7 @@
                 </button>
                 <div class="current-chat-meta">
                     <h1 class="chat-title" id="activeChatTitle">Obrolan Baru</h1>
-                    <span class="chat-subtitle" id="activeChatSubtitle">NovaAI</span>
+                    <span class="chat-subtitle" id="activeChatSubtitle"></span>
                 </div>
             </div>
 
@@ -127,13 +123,7 @@
                 <div class="model-select-wrap">
                     <label for="modelSelect" class="sr-only">Pilih Model</label>
                     <select id="modelSelect" class="model-dropdown">
-                        <option value="ANTIGRAVITY_MODEL">9Router (Default)</option>
-                        <option value="meta-llama/llama-3.3-70b-instruct:free">Llama 3.3 70B</option>
-                        <option value="deepseek/deepseek-r1:free">DeepSeek R1</option>
-                        <option value="google/gemini-2.0-flash-exp:free">Gemini 2.0 Flash</option>
-                        <option value="meta-llama/llama-3-8b-instruct:free">Llama 3 8B</option>
-                        <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
-                        <option value="openai/gpt-4o-mini">GPT-4o Mini</option>
+                        <option value="ANTIGRAVITY_MODEL">Antigravity Model</option>
                     </select>
                 </div>
 
@@ -248,7 +238,7 @@
                         id="messageInput"
                         class="message-textarea"
                         rows="1"
-                        placeholder="Kirim pesan ke NovaAI..."
+                        placeholder="Kirim pesan..."
                         aria-label="Input pesan"
                     ></textarea>
                     <button type="submit" class="send-btn" id="sendBtn" aria-label="Kirim">
@@ -258,7 +248,7 @@
                     </button>
                 </div>
             </form>
-            <div class="input-footer-note">NovaAI bisa membuat kesalahan. Selalu verifikasi informasi penting.</div>
+            <div class="input-footer-note">AI dapat membuat kesalahan. Selalu verifikasi informasi penting.</div>
         </footer>
     </main>
 </div>
@@ -297,6 +287,6 @@ SUPABASE_KEY=eyJ...</code></pre>
     </div>
 </div>
 
-<script src="/static/js/app-chatgpt.js?v=1.1"></script>
+<script src="/static/js/app-chatgpt.js?v=1.2"></script>
 </body>
 </html>

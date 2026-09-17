@@ -35,16 +35,47 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeInfoModalBtn= document.getElementById('closeInfoModalBtn');
     const modalUnderstandBtn= document.getElementById('modalUnderstandBtn');
 
-    // ── Marked Config ─────────────────────────────────────────────────────
+    // ── Marked Config (ChatGPT Codeblock Style) ───────────────────────────
     try {
-        marked.setOptions({
-            highlight: function(code, lang) {
-                if (typeof hljs !== 'undefined') {
-                    const language = hljs.getLanguage(lang) ? lang : 'plaintext';
-                    return hljs.highlight(code, { language }).value;
+        const renderer = new marked.Renderer();
+        renderer.code = function(code, infostring) {
+            const lang = (infostring || '').match(/\S*/)[0] || '';
+            const displayLang = lang || 'code';
+            const validLang = (lang && typeof hljs !== 'undefined' && hljs.getLanguage(lang)) ? lang : '';
+            let highlighted = '';
+
+            if (validLang && typeof hljs !== 'undefined') {
+                highlighted = hljs.highlight(code, { language: validLang }).value;
+            } else if (typeof hljs !== 'undefined') {
+                try {
+                    highlighted = hljs.highlightAuto(code).value;
+                } catch(e) {
+                    highlighted = escapeHtml(code);
                 }
-                return code;
-            },
+            } else {
+                highlighted = escapeHtml(code);
+            }
+
+            return `
+<div class="code-block-wrapper">
+    <div class="code-block-header">
+        <span class="code-block-lang">${escapeHtml(displayLang)}</span>
+        <button type="button" class="code-block-copy" aria-label="Salin kode">
+            <svg class="copy-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            <span class="copy-label">Salin kode</span>
+        </button>
+    </div>
+    <div class="code-block-body">
+        <pre><code class="hljs ${validLang ? 'language-' + validLang : ''}">${highlighted}</code></pre>
+    </div>
+</div>`;
+        };
+
+        marked.use({
+            renderer: renderer,
             breaks: true,
             gfm: true
         });
@@ -289,14 +320,33 @@ document.addEventListener('DOMContentLoaded', () => {
             ${!isUser ? avatarHtml : ''}
             <div class="message-body">
                 ${bubbleHtml}
-                <span class="message-meta">${isUser ? '' : 'NovaAI · '}${timeStr}</span>
+                <span class="message-meta">${timeStr}</span>
             </div>
             ${isUser ? avatarHtml : ''}
         `;
 
-        // Copy button for code blocks & table scroll wrapper
+        // Code block copy button & table scroll wrapper
         if (!isUser) {
-            row.querySelectorAll('pre').forEach(pre => {
+            // Salin kode ChatGPT-style
+            row.querySelectorAll('.code-block-copy').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const wrapper = btn.closest('.code-block-wrapper');
+                    const code = wrapper ? wrapper.querySelector('code')?.innerText || '' : '';
+                    navigator.clipboard.writeText(code).then(() => {
+                        const label = btn.querySelector('.copy-label');
+                        if (label) label.textContent = 'Tersalin!';
+                        btn.classList.add('copied');
+                        setTimeout(() => {
+                            if (label) label.textContent = 'Salin kode';
+                            btn.classList.remove('copied');
+                        }, 2000);
+                    });
+                });
+            });
+
+            // Fallback untuk <pre> standar jika ada
+            row.querySelectorAll('pre:not(.code-block-pre)').forEach(pre => {
+                if (pre.closest('.code-block-wrapper')) return;
                 const btn = document.createElement('button');
                 btn.className = 'code-copy-btn';
                 btn.textContent = 'Salin';

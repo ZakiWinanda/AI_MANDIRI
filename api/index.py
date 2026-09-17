@@ -264,7 +264,9 @@ def chat():
     custom_model = data.get('model') or AI_MODEL
     system_prompt = data.get('system_prompt') or (
         "Kamu adalah asisten AI yang cerdas, sopan, ramah, dan sangat membantu. "
-        "Gunakan format Markdown jika menyajikan penjelasan atau kode pemrograman."
+        "Gunakan format Markdown yang rapi untuk semua respon. "
+        "Jika menulis kode atau script pemrograman, SELALU gunakan format markdown codeblock "
+        "lengkap dengan nama bahasanya (contoh: ```python ... ```, ```javascript ... ```, ```sql ... ```)."
     )
 
     if not user_message:
