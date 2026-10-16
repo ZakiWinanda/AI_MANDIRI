@@ -103,6 +103,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
             supabaseIndicator.className = 'status-indicator ' + (data.supabase_configured ? 'online' : 'fallback');
             supabaseStatusText.textContent = data.supabase_configured ? 'Tersambung' : 'Lokal';
+
+            if (data.active_model && modelSelect) {
+                let found = false;
+                for (let i = 0; i < modelSelect.options.length; i++) {
+                    if (modelSelect.options[i].value === data.active_model) {
+                        modelSelect.selectedIndex = i;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    modelSelect.innerHTML = `<option value="${escapeHtml(data.active_model)}" selected>${escapeHtml(data.active_model)}</option>`;
+                }
+            }
         } catch(err) {
             openRouterIndicator.className = 'status-indicator offline';
             openRouterStatusText.textContent = 'Offline';
@@ -447,7 +461,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 message: rawMessage,
                 files: filesToSend,
                 conversation_id: activeConversationId,
-                model: modelSelect.value
+                model: (modelSelect && modelSelect.value && modelSelect.value !== 'ANTIGRAVITY_MODEL') ? modelSelect.value : undefined
             };
 
             const res = await fetch('/api/chat', {

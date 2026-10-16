@@ -66,7 +66,7 @@ app.wsgi_app = PrefixMiddleware(app.wsgi_app)
 
 # Konfigurasi AI Provider (9Router / OpenRouter)
 AI_API_KEY = os.getenv('AI_API_KEY') or os.getenv('OPENROUTER_API_KEY', '')
-AI_MODEL = os.getenv('AI_MODEL') or os.getenv('OPENROUTER_MODEL', 'ANTIGRAVITY_MODEL')
+AI_MODEL = os.getenv('AI_MODEL') or os.getenv('OPENROUTER_MODEL', 'TES')
 AI_BASE_URL = os.getenv('AI_BASE_URL') or os.getenv('OPENROUTER_BASE_URL', 'https://rx75sem.abc-tunnel.us/v1')
 
 # Konfigurasi Supabase
@@ -262,7 +262,8 @@ def chat():
     user_message = data.get('message', '').strip()
     files_data = data.get('files', [])
     conv_id = data.get('conversation_id')
-    custom_model = data.get('model') or AI_MODEL
+    req_model = data.get('model')
+    custom_model = AI_MODEL if (not req_model or req_model == 'ANTIGRAVITY_MODEL') else req_model
     system_prompt = data.get('system_prompt') or (
         "Kamu adalah asisten AI yang cerdas, sopan, ramah, dan sangat membantu. "
         "Gunakan format Markdown yang rapi untuk semua respon. "
